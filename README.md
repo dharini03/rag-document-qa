@@ -1,108 +1,78 @@
-# RAG-Based Document Question Answering System
+# RAG Document Question Answering
 
-A Retrieval-Augmented Generation (RAG) application that allows users to upload PDF and DOCX documents and ask questions based on their content. The system retrieves relevant information from uploaded documents and generates context-based answers using a language generation model.
+A Django web app where you upload a PDF or DOCX file and ask questions about it. It finds the most relevant passages with vector search, then generates an answer from them using a language model.
 
-## Overview
+**Stack:** Python · Django · Sentence Transformers · FAISS · Hugging Face Transformers (FLAN-T5) · YugabyteDB
 
-This project demonstrates the implementation of a basic RAG pipeline by combining document processing, text embeddings, vector similarity search and text generation.
+## Problem
 
-The application uses Django as its backend framework, Sentence Transformers to generate text embeddings, FAISS for similarity-based retrieval, and FLAN-T5-base for answer generation.
+Finding a specific answer inside a long document is slow. This project retrieves only the relevant parts of a document and answers from them, so you don't have to read the whole file.
+
+## How it works
+
+```mermaid
+flowchart TD
+    A[Upload PDF / DOCX] --> B[Extract text]
+    B --> C[Split into ~500-character chunks]
+    C --> D[Embed chunks with Sentence Transformers]
+    D --> E[(FAISS index)]
+    Q[User question] --> F[Embed question]
+    F --> G[Similarity search]
+    E --> G
+    G --> H[Top 3 chunks]
+    H --> I[Context + question to FLAN-T5]
+    I --> J[Generated answer]
+```
+
+1. **Extract:** text is pulled from the file with PyMuPDF (PDF) or python-docx (DOCX).
+2. **Chunk:** the text is split into chunks of about 500 characters.
+3. **Embed:** each chunk becomes a 384-dimensional vector using `all-MiniLM-L6-v2`.
+4. **Index:** the vectors are stored in a FAISS index.
+5. **Retrieve:** the question is embedded the same way, and FAISS returns the 3 closest chunks.
+6. **Generate:** the chunks and the question are passed to `google/flan-t5-base`, which writes the answer.
 
 ## Features
 
-- **Document Upload:** Upload PDF and DOCX files.
-- **Text Extraction:** Extract document content using PyMuPDF and python-docx.
-- **Text Chunking:** Divide extracted text into smaller chunks of approximately 500 characters.
-- **Embedding Generation:** Generate 384-dimensional text embeddings using Sentence Transformers.
-- **Vector Search:** Use FAISS to perform similarity-based retrieval.
-- **Context Retrieval:** Retrieve the top 3 relevant text chunks for a given question.
-- **Answer Generation:** Generate answers using Google's FLAN-T5-base model based on the retrieved context.
-- **Web Interface:** Interact with uploaded documents through a Django-based interface.
+- Upload PDF and DOCX documents
+- Semantic search over the document content
+- Context-based answer generation
+- Web interface built with Django, HTML, and CSS
+- Data stored in YugabyteDB (PostgreSQL-compatible)
 
-## Technology Stack
+## Tech stack
 
 | Component | Technology |
 |---|---|
-| Programming Language | Python |
-| Backend Framework | Django |
-| Document Processing | PyMuPDF, python-docx |
-| Embedding Model | all-MiniLM-L6-v2 |
-| Embedding Library | Sentence Transformers |
-| Vector Search | FAISS |
-| Text Generation | Hugging Face Transformers |
-| Language Model | google/flan-t5-base |
+| Language | Python |
+| Backend | Django |
+| Document parsing | PyMuPDF, python-docx |
+| Embeddings | Sentence Transformers (`all-MiniLM-L6-v2`) |
+| Vector search | FAISS |
+| Answer generation | Hugging Face Transformers (`google/flan-t5-base`) |
 | Database | YugabyteDB (PostgreSQL-compatible) |
 | Frontend | HTML, CSS |
 
-## How It Works
-
-The application follows a Retrieval-Augmented Generation workflow:
-
-1. **Document Upload:** The user uploads a PDF or DOCX document.
-2. **Text Extraction:** The application extracts text from the uploaded document.
-3. **Text Chunking:** Extracted content is divided into smaller chunks of approximately 500 characters.
-4. **Embedding Generation:** Sentence Transformers converts each text chunk into a 384-dimensional vector.
-5. **Vector Indexing:** The generated embeddings are added to a FAISS vector index.
-6. **Question Embedding:** The user's question is converted into an embedding using the same embedding model.
-7. **Similarity Search:** FAISS retrieves the top 3 relevant text chunks.
-8. **Answer Generation:** The retrieved chunks and user question are passed as context to FLAN-T5-base to generate an answer.
-
-## Architecture
-
-```text
-             Document Upload
-                    |
-                    v
-             Text Extraction
-                    |
-                    v
-              Text Chunking
-                    |
-                    v
-           Embedding Generation
-                    |
-                    v
-              FAISS Index
-                    |
-                    |
-User Question ------+
-       |
-       v
-Query Embedding
-       |
-       v
-Similarity Search
-       |
-       v
-Retrieve Top 3 Chunks
-       |
-       v
-Combine Context + Question
-       |
-       v
-     FLAN-T5
-       |
-       v
-  Generated Answer
-
 ## Limitations
 
-- Supports PDF and DOCX files containing selectable text.
-- Scanned documents requiring OCR are not supported.
-- Uses fixed-size text chunking.
-- Retrieves a fixed number of relevant chunks (top 3).
-- Answer quality depends on the relevance of retrieved content and the generated response.
-- Uses a basic retrieval pipeline without hybrid search or reranking.
+- Works only with PDF and DOCX files that contain selectable text (no OCR for scanned documents)
+- Fixed-size chunking can split a sentence or idea across two chunks
+- Always retrieves exactly 3 chunks
+- Basic retrieval only, with no hybrid search or reranking
+- Answer quality depends on retrieval quality and on the small FLAN-T5 model
 
-## Future Enhancements
+## Roadmap
 
-- Add OCR support for scanned documents.
-- Implement semantic text chunking.
-- Explore hybrid search and reranking techniques.
-- Add source references to generated answers.
-- Introduce user authentication and document-level access control.
-- Improve retrieval and answer quality.
+- [ ] Show source passages next to each answer
+- [ ] Semantic chunking
+- [ ] Hybrid search and reranking
+- [ ] OCR for scanned documents
+- [ ] User login and per-document access control
+- [ ] Option to use a hosted LLM API for better answers
 
 ## Purpose
 
-This project explores the practical implementation of Retrieval-Augmented Generation by integrating document processing, semantic embeddings, vector similarity search and language generation into a web application.
+I built this to learn how retrieval-augmented generation works in practice: how document processing, embeddings, vector search, and text generation fit together, and how much answer quality depends on the retrieval step.
+
+## Author
+
+Dharini M ([@dharini03](https://github.com/dharini03))
